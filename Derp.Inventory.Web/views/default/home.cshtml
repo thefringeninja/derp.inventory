@@ -1,0 +1,7 @@
+﻿@inherits Derp.Inventory.Web.RazorView<WarehouseListViewModel>
+<ul class="warehouses">
+    @foreach (var warehouse in Model)
+    {
+        <li><a href="~/warehouse/@warehouse.WarehouseId">@warehouse.Name</a></li>
+    }
+</ul>

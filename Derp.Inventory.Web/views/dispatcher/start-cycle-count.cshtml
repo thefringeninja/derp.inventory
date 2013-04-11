@@ -1,0 +1,6 @@
+﻿@inherits Derp.Inventory.Web.RazorView<Derp.Inventory.Messages.StartCycleCount>
+
+<form method="POST" action="@Form.Action">
+    @Form.HiddenFor(c => c.WarehouseItemId, Model.WarehouseItemId)
+    @Form.Submit()
+</form>

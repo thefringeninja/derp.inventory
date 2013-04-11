@@ -1,0 +1,5 @@
+﻿@inherits Derp.Inventory.Web.RazorView<WarehouseOverviewViewModel>
+<form method="GET" action="~/warehouse/@Model.WarehouseId/search-items">
+    <input name="q" /><br />
+    <input type="submit" value="Search"/>
+</form>

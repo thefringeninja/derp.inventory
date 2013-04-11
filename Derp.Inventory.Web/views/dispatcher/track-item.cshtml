@@ -1,0 +1,14 @@
+﻿@inherits Derp.Inventory.Web.RazorView<Derp.Inventory.Messages.TrackItem>
+
+<form method="POST"  action="@Form.Action">
+    @Form.LabelFor(c => c.Sku)
+    @Form.TextBoxFor(c => c.Sku)
+    <br />
+    @Form.LabelFor(c => c.Description)
+    @Form.TextAreaFor(c => c.Description)
+    <br />
+    @Form.HiddenFor(c => c.WarehouseItemId, Model.Id)
+    @Form.HiddenFor(c => c.InventoryItemId)
+    @Form.HiddenFor(c => c.WarehouseId)
+    @Form.Submit()
+</form>

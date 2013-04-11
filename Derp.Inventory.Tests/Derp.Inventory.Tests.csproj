@@ -1,0 +1,108 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{AD40D1C2-DEFF-4494-910E-88641C180BAD}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Derp.Inventory.Tests</RootNamespace>
+    <AssemblyName>Derp.Inventory.Tests</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="CsQuery">
+      <HintPath>..\packages\CsQuery.1.3.4\lib\net40\CsQuery.dll</HintPath>
+    </Reference>
+    <Reference Include="Nancy">
+      <HintPath>..\packages\Nancy.0.16.1\lib\net40\Nancy.dll</HintPath>
+    </Reference>
+    <Reference Include="Nancy.Testing">
+      <HintPath>..\packages\Nancy.Testing.0.16.1\lib\net40\Nancy.Testing.dll</HintPath>
+    </Reference>
+    <Reference Include="PowerAssert, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\lib\PowerAssert.dll</HintPath>
+    </Reference>
+    <Reference Include="Simple.Testing.ClientFramework, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Simple.Testing.2.0.1.0\lib\Simple.Testing.ClientFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="Simple.Testing.Framework, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Simple.Testing.2.0.1.0\lib\Simple.Testing.Framework.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Extensions.cs" />
+    <Compile Include="Fixtures\App.cs" />
+    <Compile Include="Fakes\FakeCommandSender.cs" />
+    <Compile Include="Generator.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SpecificationPrinter.cs" />
+    <Compile Include="Specifications\Core\AdjustmentSpecifications.cs" />
+    <Compile Include="Specifications\Core\LiquidatingSpecifications.cs" />
+    <Compile Include="Specifications\Core\ReceivingSpecifications.cs" />
+    <Compile Include="Specifications\Core\CycleCountingSpecifications.cs" />
+    <Compile Include="Specifications\Core\LocationSpecifications.cs" />
+    <Compile Include="Specifications\Core\PickingSpecifications.cs" />
+    <Compile Include="Specifications\Core\TrackingSpecifications.cs" />
+    <Compile Include="Specifications\Core\WarehouseItemSpecifications.cs" />
+    <Compile Include="Specifications\Web\BodyExtensions.cs" />
+    <Compile Include="Specifications\Web\DefaultModuleSpecifications.cs" />
+    <Compile Include="Templates\CommandSpecificaiton.cs" />
+    <Compile Include="Templates\ExpectedExceptionButNoExceptionWasThrownException.cs" />
+    <Compile Include="Templates\CommandModuleSpecification.cs" />
+    <Compile Include="Templates\ModuleSpecification.cs" />
+    <Compile Include="UserAgent.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Derp.Inventory.Web\Derp.Inventory.Web.csproj">
+      <Project>{ed0e9161-300e-4c8f-b71c-be557657e344}</Project>
+      <Name>Derp.Inventory.Web</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Derp.Inventory\Derp.Inventory.csproj">
+      <Project>{C4E3BA49-324A-4DBA-894A-3D4318547FB3}</Project>
+      <Name>Derp.Inventory</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

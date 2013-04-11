@@ -1,0 +1,60 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq.Expressions;
+using Derp.Inventory.Tests.Fixtures;
+using Nancy;
+using Nancy.Testing;
+using Simple.Testing.ClientFramework;
+
+namespace Derp.Inventory.Tests.Templates
+{
+    public class ModuleSpecification<TModule> : TypedSpecification<App>
+        where TModule : class, INancyModule
+    {
+        public Action Before;
+        public Action<ConfigurableBootstrapper.ConfigurableBootstrapperConfigurator> Bootstrap = with => { };
+        public List<Expression<Func<App, bool>>> Expect = new List<Expression<Func<App, bool>>>();
+        public Action Finally;
+        public string Name;
+
+
+        public Action<BrowserContext> OnContext = context => { };
+
+        public Func<Action<BrowserContext>, UserAgent> When;
+
+        #region TypedSpecification<App> Members
+
+        public string GetName()
+        {
+            return Name;
+        }
+
+        public Action GetBefore()
+        {
+            return Before;
+        }
+
+        public Delegate GetOn()
+        {
+            return new Func<UserAgent>(() => When(OnContext));
+        }
+
+        public Delegate GetWhen()
+        {
+            return new Func<UserAgent, App>(
+                userAgent => new App(userAgent.Execute(new Browser(with => Bootstrap(with.Module<TModule>())))));
+        }
+
+        public IEnumerable<Expression<Func<App, bool>>> GetAssertions()
+        {
+            return Expect;
+        }
+
+        public Action GetFinally()
+        {
+            return Finally;
+        }
+
+        #endregion
+    }
+}

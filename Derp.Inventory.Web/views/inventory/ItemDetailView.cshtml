@@ -1,0 +1,23 @@
+﻿@using Derp.Inventory.Messages
+@inherits Derp.Inventory.Web.RazorView<ItemDetailViewModel>
+<article>
+    <header>@Model.Sku - @Model.Description</header>
+    <section>
+        Quantity On Hand: @Model.QuantityOnHand
+    </section>
+    <ul>
+        <li>@Form.Partial(new PickItem(Model.WarehouseItemId, 0))</li>
+        <li>@Form.Partial(new ReceiveItem(Model.WarehouseItemId, 0))</li>
+        <li>
+            @if (Model.Counting)
+            {
+                @Form.Partial(new CompleteCycleCount(Model.WarehouseItemId, Model.QuantityOnHand))
+            }
+            else
+            {
+                @Form.Partial(new StartCycleCount(Model.WarehouseItemId))
+            }
+        </li>
+    </ul>
+</article>
+
