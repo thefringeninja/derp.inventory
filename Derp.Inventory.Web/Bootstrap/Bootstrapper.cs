@@ -108,8 +108,8 @@ namespace Derp.Inventory.Web.Bootstrap
         {
             base.ConfigureConventions(nancyConventions);
 
-            nancyConventions.ViewLocationConventions.Insert(
-                0, (viewName, model, context) => "views" + context.ModulePath);
+            nancyConventions.ViewLocationConventions.Add(
+                (viewName, model, context) => "views" + context.ModulePath);
         }
 
         protected override void ApplicationStartup(TinyIoCContainer container, IPipelines pipelines)
