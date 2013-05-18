@@ -67,7 +67,7 @@ namespace Derp.Inventory.Web.GetEventStore
 
         private void RecoverSubscription()
         {
-            var livePosition = connection.ReadAllEventsBackward(Position.End, 1, true).FromPosition;
+            var livePosition = connection.ReadAllEventsBackward(Position.End, 1, false).FromPosition;
             var catchingUp = true;
             var lastProcessedPosition = positions.GetLastProcessedPosition();
             subscription = connection.SubscribeToAllFrom(
@@ -80,17 +80,19 @@ namespace Derp.Inventory.Web.GetEventStore
                         throw new ArgumentException(
                             "ResolvedEvent didn't come off a subscription to all (has no position).");
 
+                    if (catchingUp && resolvedEvent.OriginalPosition.Value >= livePosition) {
+                    
+                        catchingUp = false;
+                        
+                        bus.Publish(new CaughtUp());
+                    }
+                    
                     var @event = ProcessRawEvent(resolvedEvent);
 
                     if (@event != null && subscriptions.TryGetValue(@event.GetType(), out subscribers))
                     {
                         subscribers.ForEach(handler => handler(@event, resolvedEvent.OriginalPosition));
                     }
-
-                    if (false == catchingUp || resolvedEvent.OriginalPosition.Value < livePosition) return;
-
-                    catchingUp = false;
-                    publisher.Publish(new CaughtUp());
                 },
                 (_, reason, error) =>
                 {
