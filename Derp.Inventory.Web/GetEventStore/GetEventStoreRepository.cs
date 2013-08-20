@@ -61,7 +61,7 @@ namespace Derp.Inventory.Web.GetEventStore
         {
             var aggregate = (TAggregate) Activator.CreateInstance(typeof (TAggregate), true);
 
-            IEnumerable<Event> stream = await connection.ReadEventsAsync(getStreamId(id), version, serializerSettings);
+            IEnumerable<Event> stream = await connection.ReadEventsAsync(getStreamId(id), version, serializerSettings).ConfigureAwait(false);
 
             aggregate.LoadsFromHistory(stream);
 
@@ -75,14 +75,12 @@ namespace Derp.Inventory.Web.GetEventStore
 
             var version = aggregate.Version - changes.Count;
 
-            var events = await changes
-                                   .PrepareCommitAsync(
-                                       async e =>
-                                       await
-                                       e.CreateEventDataAsync(DeterministicGuid.CreateFrom(commitId, ++version),
-                                                              serializerSettings, updateHeaders: updateHeaders));
+            var events = await changes.PrepareCommitAsync(
+                async e => await e.CreateEventDataAsync(
+                    DeterministicGuid.CreateFrom(commitId, ++version),
+                    serializerSettings, updateHeaders: updateHeaders)).ConfigureAwait(false);
 
-            await connection.PersistCommitAsync(new Commit(getStreamId(aggregate.Id), version, events));
+            await connection.PersistCommitAsync(new Commit(getStreamId(aggregate.Id), version, events)).ConfigureAwait(false);
         }
     }
 }

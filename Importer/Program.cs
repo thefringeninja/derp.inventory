@@ -12,7 +12,7 @@ using Derp.Inventory.Application;
 using Derp.Inventory.Domain;
 using Derp.Inventory.Infrastructure;
 using Derp.Inventory.Messages;
-using Derp.Inventory.Web.GetEventStore;
+using Derp.Inventory.Web.Infrastructure.GetEventStore;
 using Derp.Inventory.Web.ViewModels;
 using EventStore.ClientAPI;
 
@@ -24,8 +24,8 @@ namespace Importer
         static Random random = new Random();
         public static void Main(string[] args)
         {
-            var connection = EventStoreConnection.Create();
-            connection.Connect(new IPEndPoint(IPAddress.Loopback, 1113));
+            var connection = EventStoreConnection.Create(new IPEndPoint(IPAddress.Loopback, 1113));
+            connection.Connect();
             var storage = new ConcurrentDictionary<Guid, List<Event>>();
             
             handlers = new InventoryHandlers(new InMemoryRepository<WarehouseItem>(storage));

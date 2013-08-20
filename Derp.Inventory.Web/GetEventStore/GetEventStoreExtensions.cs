@@ -29,7 +29,8 @@ namespace Derp.Inventory.Web.GetEventStore
 
             foreach (var @event in events)
             {
-                var eventDatum = await buildEventData(@event);
+                var eventDatum = await buildEventData(@event)
+                    .ConfigureAwait(false);
 
                 eventData.Add(eventDatum);
             }
@@ -37,102 +38,128 @@ namespace Derp.Inventory.Web.GetEventStore
             return eventData;
         }
 
-        public static async Task<IList<Event>> ReadEventsAsync(this EventStoreConnection eventStoreConnection, string id,
-                                                               int version, JsonSerializerSettings serializerSettings,
-                                                               int pageSize = 512)
+        public static async Task<IList<Event>> ReadEventsAsync(
+            this IEventStoreConnection eventStoreConnection, string id, int version,
+            JsonSerializerSettings serializerSettings, int pageSize = 512)
         {
-            var position = 1;
+            var position = 0;
             var lastEventVersion = 0;
 
             var stream = new List<Event>();
 
             while (lastEventVersion <= version)
             {
-                var slice = await eventStoreConnection.ReadStreamEventsForwardAsync(id, position, pageSize, true);
-                foreach (var recordedEvent in slice.Events.Select(x => x.Event))
+                var slice = await eventStoreConnection.ReadStreamEventsForwardAsync(id, position, pageSize, true)
+                                                      .ConfigureAwait(false);
+                var recordedEvents = slice.Events.Select(x => x.Event);
+                foreach (var recordedEvent in recordedEvents)
                 {
                     position++;
 
-                    var @event = await recordedEvent.DeserializeEventAsync(serializerSettings);
+                    if (recordedEvent.EventType.StartsWith("$"))
+                        continue;
 
-                    stream.Add((Event) @event);
+                    var @event = await recordedEvent.DeserializeEventAsync(serializerSettings)
+                                                    .ConfigureAwait(false);
 
-                    if (++lastEventVersion > version) return stream;
+                    stream.Add((Event)@event);
+
+                    if (++lastEventVersion > version)
+                        return stream;
                 }
 
-                if (slice.IsEndOfStream) return stream;
+                if (slice.IsEndOfStream)
+                    return stream;
             }
 
             return stream;
         }
 
-        public static async Task<object> DeserializeEventAsync(this RecordedEvent recordedEvent,
-                                                               JsonSerializerSettings serializerSettings)
+        public static async Task<object> DeserializeEventAsync(
+            this RecordedEvent recordedEvent, JsonSerializerSettings serializerSettings)
         {
-            var headers = await recordedEvent.DeserializeHeadersAsync(serializerSettings);
+            var headers = await recordedEvent.DeserializeHeadersAsync(serializerSettings)
+                                             .ConfigureAwait(false);
 
             object typeName;
             if (headers == null || false == headers.TryGetValue(GetEventStoreHeaders.Type, out typeName))
                 return null;
 
-            var type = Type.GetType((String) typeName);
+            var type = AppDomainTypeResolution.GetType((String)typeName);
 
-            return await recordedEvent.Data.DeserializeEventAsync(type, serializerSettings);
+            return await recordedEvent.Data.DeserializeEventAsync(type, serializerSettings)
+                                      .ConfigureAwait(false);
         }
 
-        public static async Task<object> DeserializeEventAsync(this byte[] data, Type type,
-                                                               JsonSerializerSettings serializerSettings)
+        public static async Task<object> DeserializeEventAsync(
+            this byte[] data, Type type, JsonSerializerSettings serializerSettings)
         {
             return await JsonConvert.DeserializeObjectAsync(
                 Encoding.UTF8.GetString(data),
                 type,
-                serializerSettings);
+                serializerSettings)
+                                    .ConfigureAwait(false);
         }
 
-        public static Task<Dictionary<string, object>> DeserializeHeadersAsync(this RecordedEvent recordedEvent,
-                                                                               JsonSerializerSettings serializerSettings)
+        public static async Task<Dictionary<string, object>> DeserializeHeadersAsync(
+            this RecordedEvent recordedEvent, JsonSerializerSettings serializerSettings)
         {
-            return JsonConvert.DeserializeObjectAsync<Dictionary<string, object>>(
+            return await JsonConvert.DeserializeObjectAsync<Dictionary<string, object>>(
                 Encoding.UTF8.GetString(recordedEvent.Metadata),
-                serializerSettings);
+                serializerSettings)
+                                    .ConfigureAwait(false);
         }
 
-        public static async Task PersistCommitAsync(this EventStoreConnection connection, Commit commit,
-                                                    int pageSize = 512)
+        public static async Task PersistCommitAsync(
+            this IEventStoreConnection connection, Commit commit, int pageSize = 512)
         {
             var expectedVersion = commit.Version - commit.Events.Count();
 
             var expectedEventStreamVersion = expectedVersion == 0
-                                                 ? ExpectedVersion.NoStream
-                                                 : expectedVersion;
+                ? ExpectedVersion.NoStream
+                : expectedVersion;
 
-            var transaction = await connection.StartTransactionAsync(commit.StreamId, expectedEventStreamVersion);
-
-            for (var i = 0; i < commit.Events.Count; i += pageSize)
+            if (commit.Events.Count < pageSize)
             {
-                await transaction.WriteAsync(commit.Events.Skip(i).Take(pageSize));
+                await connection.AppendToStreamAsync(commit.StreamId, expectedEventStreamVersion, commit.Events)
+                                .ConfigureAwait(false);
             }
+            else
+            {
+                var transaction = await connection.StartTransactionAsync(commit.StreamId, expectedEventStreamVersion)
+                                                  .ConfigureAwait(false);
 
-            await transaction.CommitAsync();
+                for (var i = 0; i < commit.Events.Count; i += pageSize)
+                {
+                    await transaction.WriteAsync(commit.Events.Skip(i).Take(pageSize))
+                                     .ConfigureAwait(false);
+                }
+
+                await transaction.CommitAsync()
+                                 .ConfigureAwait(false);
+            }
         }
 
-        public static async Task<EventData> CreateEventDataAsync(this Event @event, Guid eventId,
-                                                                 JsonSerializerSettings jsonSerializerSettings,
-                                                                 bool dispatchable = true,
-                                                                 Action<IDictionary<string, object>> updateHeaders =
-                                                                     null)
+        public static async Task<EventData> CreateEventDataAsync(
+            this Event @event, Guid eventId, JsonSerializerSettings jsonSerializerSettings, bool dispatchable = true,
+            Action<IDictionary<string, object>> updateHeaders = null)
         {
             var headers = new Dictionary<string, object>
             {
-                {GetEventStoreHeaders.Type, @event.GetType().ToPartiallyQualifiedName()},
-                {GetEventStoreHeaders.Timestamp, DateTime.UtcNow},
-                {GetEventStoreHeaders.CorrelationId, eventId}
+                {
+                    GetEventStoreHeaders.Type, @event.GetType().ToPartiallyQualifiedName()
+                },
+                {
+                    GetEventStoreHeaders.Timestamp, DateTime.UtcNow
+                }
             };
             updateHeaders = updateHeaders ?? (_ => { });
             updateHeaders(headers);
 
-            var body = await JsonConvert.SerializeObjectAsync(@event, Formatting.Indented, jsonSerializerSettings);
-            var metadata = await JsonConvert.SerializeObjectAsync(headers, Formatting.Indented, jsonSerializerSettings);
+            var body = await JsonConvert.SerializeObjectAsync(@event, Formatting.Indented, jsonSerializerSettings)
+                .ConfigureAwait(false);
+            var metadata = await JsonConvert.SerializeObjectAsync(headers, Formatting.Indented, jsonSerializerSettings)
+                .ConfigureAwait(false);
 
             return new EventData(
                 eventId, @event.GetType().Name, true,
