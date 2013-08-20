@@ -6,12 +6,12 @@ using Derp.Inventory.Infrastructure;
 using EventStore.ClientAPI;
 using Newtonsoft.Json;
 
-namespace Derp.Inventory.Web.GetEventStore
+namespace Derp.Inventory.Web.Infrastructure.GetEventStore
 {
     public class GetEventStoreRepository<TAggregate> : IRepository<TAggregate> where TAggregate : AggregateRoot
     {
         private const int PageSize = 512;
-        private readonly EventStoreConnection connection;
+        private readonly IEventStoreConnection connection;
         private readonly Func<Guid, string> getStreamId;
         private readonly JsonSerializerSettings serializerSettings;
 
@@ -21,15 +21,14 @@ namespace Derp.Inventory.Web.GetEventStore
         /// <param name="connection"></param>
         /// <param name="boundedContext">The name of the bounded context.  Typically an aggregate crosses context boundaries, e.g. a visitor in the web context becomes a customer in the sales context. </param>
         /// <param name="customizeSerailzer">customize the json. You should probably not use this.</param>
-        /// <param name="upconversion">optional event converter</param>
-        public GetEventStoreRepository(EventStoreConnection connection, string boundedContext,
+        public GetEventStoreRepository(IEventStoreConnection connection, string boundedContext,
                                        Action<JsonSerializerSettings> customizeSerailzer = null)
             : this(connection, id => boundedContext + "-" + id.ToString("n"), customizeSerailzer ?? (s => { }))
         {
         }
 
         public GetEventStoreRepository(
-            EventStoreConnection connection, Func<Guid, string> getStreamId,
+            IEventStoreConnection connection, Func<Guid, string> getStreamId,
             Action<JsonSerializerSettings> customizeSerializer)
         {
             this.connection = connection;
@@ -73,14 +72,20 @@ namespace Derp.Inventory.Web.GetEventStore
         {
             var changes = aggregate.GetUncommittedChanges().ToList();
 
-            var version = aggregate.Version - changes.Count;
+            var version = aggregate.Version - changes.Count();
+            var expectedVersion = version;
 
             var events = await changes.PrepareCommitAsync(
                 async e => await e.CreateEventDataAsync(
-                    DeterministicGuid.CreateFrom(commitId, ++version),
-                    serializerSettings, updateHeaders: updateHeaders)).ConfigureAwait(false);
+                    DeterministicGuid.CreateFrom(commitId, ++version), serializerSettings,
+                    updateHeaders: updateHeaders));
 
-            await connection.PersistCommitAsync(new Commit(getStreamId(aggregate.Id), version, events)).ConfigureAwait(false);
+            if (expectedVersion == 0)
+            {
+                events.Insert(0, new EventData(Guid.NewGuid(), "$shitbird", false, null, null));
+            }
+
+            await connection.PersistCommitAsync(new Commit(getStreamId(aggregate.Id), version, events), pageSize: PageSize);
         }
     }
 }

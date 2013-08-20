@@ -10,7 +10,7 @@ using Simple.Testing.ClientFramework;
 namespace Derp.Inventory.Tests.Templates
 {
     public class CommandModuleSpecification<TCommand> :
-        TypedSpecification<App> where TCommand : class
+        TypedSpecification<App> where TCommand : Command
     {
         private readonly FakeCommandSender commandSender;
         public Action Before;

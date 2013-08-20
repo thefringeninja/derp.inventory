@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using EventStore.ClientAPI;
 using Newtonsoft.Json;
 
-namespace Derp.Inventory.Web.GetEventStore
+namespace Derp.Inventory.Web.Infrastructure.GetEventStore
 {
     public static class GetEventStoreExtensions
     {
@@ -39,7 +39,7 @@ namespace Derp.Inventory.Web.GetEventStore
         }
 
         public static async Task<IList<Event>> ReadEventsAsync(
-            this IEventStoreConnection eventStoreConnection, string id, int version,
+            this IEventStoreConnection connection, string id, int version,
             JsonSerializerSettings serializerSettings, int pageSize = 512)
         {
             var position = 0;
@@ -49,7 +49,7 @@ namespace Derp.Inventory.Web.GetEventStore
 
             while (lastEventVersion <= version)
             {
-                var slice = await eventStoreConnection.ReadStreamEventsForwardAsync(id, position, pageSize, true)
+                var slice = await connection.ReadStreamEventsForwardAsync(id, position, pageSize, true)
                                                       .ConfigureAwait(false);
                 var recordedEvents = slice.Events.Select(x => x.Event);
                 foreach (var recordedEvent in recordedEvents)
@@ -85,7 +85,7 @@ namespace Derp.Inventory.Web.GetEventStore
             if (headers == null || false == headers.TryGetValue(GetEventStoreHeaders.Type, out typeName))
                 return null;
 
-            var type = AppDomainTypeResolution.GetType((String)typeName);
+            var type = Type.GetType((String) typeName);
 
             return await recordedEvent.Data.DeserializeEventAsync(type, serializerSettings)
                                       .ConfigureAwait(false);

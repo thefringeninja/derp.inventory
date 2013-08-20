@@ -1,19 +1,19 @@
 ﻿using System;
 using Derp.Inventory.Messages;
+using Derp.Inventory.Web.Infrastructure.GetEventStore;
 using Derp.Inventory.Web.ViewModels;
-using Derp.Inventory.Web.ViewWriters;
 using EventStore.ClientAPI;
 
 namespace Derp.Inventory.Web.Projections
 {
-    public class ItemDetailResultProjection :
-        ProjectionHandles<ItemTracked>,
-        ProjectionHandles<ItemPicked>,
-        ProjectionHandles<ItemLiquidated>,
-        ProjectionHandles<ItemQuantityAdjusted>,
-        ProjectionHandles<ItemReceived>,
-        ProjectionHandles<CycleCountStarted>,
-        ProjectionHandles<CycleCountCompleted>
+    public class ItemDetailResultProjection 
+        : Handles<GetEventStoreMessage<ItemTracked>>,
+        Handles<GetEventStoreMessage<ItemPicked>>,
+        Handles<GetEventStoreMessage<ItemLiquidated>>,
+        Handles<GetEventStoreMessage<ItemQuantityAdjusted>>,
+        Handles<GetEventStoreMessage<ItemReceived>>,
+        Handles<GetEventStoreMessage<CycleCountStarted>>,
+        Handles<GetEventStoreMessage<CycleCountCompleted>>
     {
         private readonly IWriteViews<Guid, ItemDetailViewModel> writer;
 
@@ -22,79 +22,80 @@ namespace Derp.Inventory.Web.Projections
             this.writer = writer;
         }
 
-        #region ProjectionHandles<CycleCountCompleted> Members
+        #region ProjectionHandles<GetEventStoreMessage<CycleCountCompleted>> Members
 
-        public void Handle(CycleCountCompleted message, Position? position)
+        public void Handle(GetEventStoreMessage<CycleCountCompleted> message)
         {
-            writer.TryUpdate(message.WarehouseItemId, position, vm => vm.Counting = false);
+            writer.TryUpdate(message.Message.WarehouseItemId, message.Position, vm => vm.Counting = false);
         }
 
         #endregion
 
-        #region ProjectionHandles<CycleCountStarted> Members
+        #region ProjectionHandles<GetEventStoreMessage<CycleCountStarted>> Members
 
-        public void Handle(CycleCountStarted message, Position? position)
+        public void Handle(GetEventStoreMessage<CycleCountStarted> message)
         {
-            writer.TryUpdate(message.WarehouseItemId, position, vm => vm.Counting = true);
+            writer.TryUpdate(message.Message.WarehouseItemId, message.Position, vm => vm.Counting = true);
         }
 
         #endregion
 
-        #region ProjectionHandles<ItemLiquidated> Members
+        #region ProjectionHandles<GetEventStoreMessage<ItemLiquidated>> Members
 
-        public void Handle(ItemLiquidated message, Position? position)
+        public void Handle(GetEventStoreMessage<ItemLiquidated> message)
         {
-            ChangeQuantity(message.WarehouseItemId, position, -message.Quantity);
+            ChangeQuantity(message.Message.WarehouseItemId, message.Position, -message.Message.Quantity);
         }
 
         #endregion
 
-        #region ProjectionHandles<ItemPicked> Members
+        #region ProjectionHandles<GetEventStoreMessage<ItemPicked>> Members
 
-        public void Handle(ItemPicked message, Position? position)
+        public void Handle(GetEventStoreMessage<ItemPicked> message)
         {
-            ChangeQuantity(message.WarehouseItemId, position, -message.Quantity);
+            ChangeQuantity(message.Message.WarehouseItemId, message.Position, -message.Message.Quantity);
         }
 
         #endregion
 
-        #region ProjectionHandles<ItemQuantityAdjusted> Members
+        #region ProjectionHandles<GetEventStoreMessage<ItemQuantityAdjusted>> Members
 
-        public void Handle(ItemQuantityAdjusted message, Position? position)
+        public void Handle(GetEventStoreMessage<ItemQuantityAdjusted> message)
         {
-            ChangeQuantity(message.WarehouseItemId, position, message.AdjustmentQuantity);
+            ChangeQuantity(message.Message.WarehouseItemId, message.Position, message.Message.AdjustmentQuantity);
         }
 
         #endregion
 
-        #region ProjectionHandles<ItemReceived> Members
+        #region ProjectionHandles<GetEventStoreMessage<ItemReceived>> Members
 
-        public void Handle(ItemReceived message, Position? position)
+        public void Handle(GetEventStoreMessage<ItemReceived> message)
         {
-            ChangeQuantity(message.WarehouseItemId, position, message.Quantity);
+            ChangeQuantity(message.Message.WarehouseItemId, message.Position, message.Message.Quantity);
         }
 
         #endregion
 
-        #region ProjectionHandles<ItemTracked> Members
+        #region ProjectionHandles<GetEventStoreMessage<ItemTracked>> Members
 
-        public void Handle(ItemTracked message, Position? position)
+        public void Handle(GetEventStoreMessage<ItemTracked> message)
         {
             writer.AddOrUpdate(
-                message.WarehouseItemId, position,
-                () => new ItemDetailViewModel(message.WarehouseItemId),
+                message.Message.WarehouseItemId, message.Position,
+                () => new ItemDetailViewModel(message.Message.WarehouseItemId),
                 vm =>
                 {
-                    vm.Sku = message.Sku;
-                    vm.Description = message.Description;
+                    vm.Sku = message.Message.Sku;
+                    vm.Description = message.Message.Description;
                 });
         }
 
         #endregion
 
-        private void ChangeQuantity(Guid warehouseItemId, Position? position, int quantity)
+        private void ChangeQuantity(Guid warehouseItemId, Position position, int quantity)
         {
             writer.TryUpdate(warehouseItemId, position, vm => vm.QuantityOnHand += quantity);
         }
-    }
+
+   }
 }

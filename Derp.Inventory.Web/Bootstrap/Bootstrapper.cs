@@ -5,6 +5,7 @@ using System.Net;
 using Derp.Inventory.Web.Modules;
 using Derp.Inventory.Web.Services;
 using EventStore.ClientAPI;
+using EventStore.ClientAPI.SystemData;
 using Nancy;
 using Nancy.Bootstrapper;
 using Nancy.Conventions;
@@ -33,14 +34,12 @@ namespace Derp.Inventory.Web.Bootstrap
             return documentStore;
         });
 
-        private readonly Lazy<EventStoreConnection> eventStoreConnectionLazy = new Lazy<EventStoreConnection>(() =>
+        private readonly Lazy<IEventStoreConnection> EventStoreLazy = new Lazy<IEventStoreConnection>(() =>
         {
-            var settings = ConnectionSettings.Create()
-                                             .KeepReconnecting()
-                                             .KeepRetrying();
-
-            var connection = EventStoreConnection.Create(settings);
-            connection.Connect(new IPEndPoint(IPAddress.Loopback, 1113));
+            var connection = EventStoreConnection.Create(
+                ConnectionSettings.Create().SetDefaultUserCredentials(
+                    new UserCredentials("admin", "changeit")), new IPEndPoint(IPAddress.Loopback, 1113));
+            connection.Connect();
             return connection;
         });
 
@@ -56,9 +55,9 @@ namespace Derp.Inventory.Web.Bootstrap
             };
         }
 
-        private EventStoreConnection EventStoreConnection
+        private IEventStoreConnection EventStore
         {
-            get { return eventStoreConnectionLazy.Value; }
+            get { return EventStoreLazy.Value; }
         }
 
         private IDocumentStore DocumentStore
@@ -78,30 +77,20 @@ namespace Derp.Inventory.Web.Bootstrap
         }
 
         private void Register<TCommand>(
-            Handles<TCommand> handler,
-            Func<NancyContext, TCommand, Response> onHandled = null)
-            where TCommand : class
+            Handles<TCommand> handler)
+            where TCommand : Command
         {
-            Register<TCommand, CommandModule<TCommand>>(handler, onHandled);
+            Register<TCommand, CommandModule<TCommand>>(handler);
         }
 
         private void Register<TCommand, TCommandModule>(
-            Handles<TCommand> handler,
-            Func<NancyContext, TCommand, Response> onHandled = null)
-            where TCommand : class
-            where TCommandModule : CommandModule<TCommand>
+            Handles<TCommand> handler)
+            where TCommand : Command where TCommandModule : CommandModule<TCommand>
         {
-            onHandled = onHandled ?? ((_, __) => 200);
             bus.Register(handler);
 
-            var moduleType = typeof (TCommandModule);
-            commandModules.Add(
-                new ModuleRegistration(
-                    moduleType,
-                    GetModuleKeyGenerator().GetKeyForModuleType(moduleType)));
-
-            ApplicationContainer.Register<CommandResponder<TCommand>>(
-                new DelegateCommandResponder<TCommand>(onHandled));
+            var moduleType = typeof(TCommandModule);
+            commandModules.Add(new ModuleRegistration(moduleType));
         }
 
         protected override void ConfigureConventions(NancyConventions nancyConventions)

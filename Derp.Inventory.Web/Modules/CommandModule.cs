@@ -1,97 +1,55 @@
-﻿using System.Collections.Generic;
-using Derp.Inventory.Web.Services;
-using Nancy;
+﻿using Nancy;
 using Nancy.ModelBinding;
+using Nancy.Responses.Negotiation;
 
 namespace Derp.Inventory.Web.Modules
 {
-    public class CommandModule<TCommand> : NancyModule where TCommand : class
+    public class CommandModule<TCommand> : CommandModule<TCommand, TCommand> where TCommand : Command
+    {
+        public CommandModule(CommandSender bus)
+            : base(bus)
+        {
+        }
+    }
+    public class CommandModule<TCommand, TCommandDto> : NancyModule where TCommand : Command
     {
         private readonly CommandSender bus;
 
         public CommandModule(
-            CommandSender bus,
-            CommandResponder<TCommand> responder,
-            Parameters parameters)
+            CommandSender bus)
             : base(typeof (TCommand).GetDispatcherResource())
         {
             this.bus = bus;
-            var binder = new CommandBinder<TCommand>(parameters.TypeConverters, parameters.BodyDeserializers,
-                                                     parameters.FieldNameConverter, new BindingDefaults());
-
             Get["/"] = p =>
             {
-                var useCase = GetUseCaseFromQueryString(parameters.ContextFactory, binder);
+                var useCase = this.Bind<TCommandDto>();
                 return Negotiate.WithModel(useCase);
             };
             Post["/"] = p =>
             {
-                var command = (TCommand) binder.Bind(Context, typeof (TCommand), null, BindingConfig.Default);
+                var commandDto = this.BindAndValidate<TCommandDto>();
+
+                if (false == ModelValidationResult.IsValid)
+                {
+                    return 400;
+                }
+
+                TCommand command = (dynamic) commandDto;
 
                 DispatchCommand(command);
 
-                return responder.OnHandled(Context, command);
+                return OnHandled(command);
             };
+        }
+
+        protected virtual Negotiator OnHandled(TCommand command)
+        {
+            return Negotiate.WithStatusCode(200);
         }
 
         protected virtual void DispatchCommand(TCommand command)
         {
             bus.Send(command);
         }
-
-        private TCommand GetUseCaseFromQueryString(INancyContextFactory contextFactory, IBinder binder)
-        {
-            var context = contextFactory.Create(Request);
-
-            foreach (var key in context.Request.Query)
-            {
-                context.Request.Form.Add(key, context.Request.Query[key]);
-            }
-
-            var useCase = (TCommand) binder.Bind(context, typeof (TCommand), null, BindingConfig.Default);
-
-            return useCase;
-        }
-
-        #region Nested type: Parameters
-
-        public class Parameters
-        {
-            private readonly IEnumerable<IBodyDeserializer> bodyDeserializers;
-            private readonly INancyContextFactory contextFactory;
-            private readonly IFieldNameConverter fieldNameConverter;
-            private readonly IEnumerable<ITypeConverter> typeConverters;
-
-            public Parameters(INancyContextFactory contextFactory, IEnumerable<ITypeConverter> typeConverters,
-                              IEnumerable<IBodyDeserializer> bodyDeserializers, IFieldNameConverter fieldNameConverter)
-            {
-                this.contextFactory = contextFactory;
-                this.typeConverters = typeConverters;
-                this.bodyDeserializers = bodyDeserializers;
-                this.fieldNameConverter = fieldNameConverter;
-            }
-
-            public INancyContextFactory ContextFactory
-            {
-                get { return contextFactory; }
-            }
-
-            public IEnumerable<ITypeConverter> TypeConverters
-            {
-                get { return typeConverters; }
-            }
-
-            public IEnumerable<IBodyDeserializer> BodyDeserializers
-            {
-                get { return bodyDeserializers; }
-            }
-
-            public IFieldNameConverter FieldNameConverter
-            {
-                get { return fieldNameConverter; }
-            }
-        }
-
-        #endregion
     }
 }

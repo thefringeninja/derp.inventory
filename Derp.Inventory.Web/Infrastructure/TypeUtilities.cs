@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 
-namespace Derp.Inventory.Web.GetEventStore
+namespace Derp.Inventory.Web.Infrastructure
 {
     internal static class TypeUtilities
     {

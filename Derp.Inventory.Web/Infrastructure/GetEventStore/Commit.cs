@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using EventStore.ClientAPI;
 
-namespace Derp.Inventory.Web.GetEventStore
+namespace Derp.Inventory.Web.Infrastructure.GetEventStore
 {
     public class Commit
     {

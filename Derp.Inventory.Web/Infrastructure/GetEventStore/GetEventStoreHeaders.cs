@@ -1,4 +1,4 @@
-﻿namespace Derp.Inventory.Web.GetEventStore
+﻿namespace Derp.Inventory.Web.Infrastructure.GetEventStore
 {
     public static class GetEventStoreHeaders
     {

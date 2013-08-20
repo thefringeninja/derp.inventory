@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Derp.Inventory.Web.ViewModels;
 
-namespace Derp.Inventory.Web.Services
+namespace Derp.Inventory.Web.Projections.InMemory
 {
     public class InMemoryItemDetailRepository : Dictionary<Guid, ItemDetailViewModel>, IItemDetailRepository
     {

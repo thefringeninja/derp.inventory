@@ -3,7 +3,7 @@ using Derp.Inventory.Web.ViewModels;
 using Raven.Abstractions.Indexing;
 using Raven.Client.Indexes;
 
-namespace Derp.Inventory.Web.Raven
+namespace Derp.Inventory.Web.Projections.Raven
 {
     public class ItemSearch : AbstractIndexCreationTask<ItemSearchResultViewModel>
     {

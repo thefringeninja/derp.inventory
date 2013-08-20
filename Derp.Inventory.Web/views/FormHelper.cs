@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 using System.Text;
 using Nancy.ViewEngines.Razor;
 
-namespace Derp.Inventory.Web
+namespace Derp.Inventory.Web.views
 {
     public class FormHelper<T> where T : class
     {

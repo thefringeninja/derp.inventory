@@ -1,4 +1,5 @@
 ﻿using System;
+using Derp.Inventory.Web.Projections;
 using Derp.Inventory.Web.Services;
 using Nancy;
 

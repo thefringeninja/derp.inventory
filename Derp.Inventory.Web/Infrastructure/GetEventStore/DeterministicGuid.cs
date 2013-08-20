@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Security.Cryptography;
 
-namespace Derp.Inventory.Web.GetEventStore
+namespace Derp.Inventory.Web.Infrastructure.GetEventStore
 {
     /// <summary>
     ///     Helper methods for working with <see cref="Guid" />.

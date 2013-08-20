@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Linq;
-using Derp.Inventory.Web.Raven;
 using Derp.Inventory.Web.ViewModels;
 using Raven.Client;
 
-namespace Derp.Inventory.Web.Services
+namespace Derp.Inventory.Web.Projections.Raven
 {
     public class RavenItemSearchRepository : IItemSearchRepository
     {

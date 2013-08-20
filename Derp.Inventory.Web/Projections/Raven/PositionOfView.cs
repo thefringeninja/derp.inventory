@@ -1,6 +1,6 @@
 ﻿using EventStore.ClientAPI;
 
-namespace Derp.Inventory.Web.Model
+namespace Derp.Inventory.Web.Projections.Raven
 {
     public class PositionOfView
     {
@@ -9,11 +9,11 @@ namespace Derp.Inventory.Web.Model
         public long PreparePosition { get; set; }
         public string Id { get; set; }
 
-        public static implicit operator Position?(PositionOfView document)
+        public static implicit operator Position(PositionOfView document)
         {
             return document != null
                        ? new Position(document.CommitPosition, document.PreparePosition)
-                       : default(Position?);
+                       : Position.Start;
         }
     }
 }

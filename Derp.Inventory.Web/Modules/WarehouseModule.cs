@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using Derp.Inventory.Web.Projections;
 using Derp.Inventory.Web.Services;
 using Derp.Inventory.Web.ViewModels;
 using Nancy;

@@ -1,17 +1,15 @@
 ﻿using System;
-using Derp.Inventory.Web.GetEventStore;
-using Derp.Inventory.Web.Messages;
+using Derp.Inventory.Web.Infrastructure.GetEventStore;
 using EventStore.ClientAPI;
 using Raven.Client;
 
-namespace Derp.Inventory.Web.ViewWriters
+namespace Derp.Inventory.Web.Projections.Raven
 {
-    public class CatchUpDocumentSessionObserver<TView> : IObserver<Action<IDocumentSession>>,
-                                                         Handles<CaughtUp>,
+    public class CatchUpDocumentSessionObserver<TView> : IObserver<RavenOperation>,
                                                          IGetEventStorePositionRepository
     {
         private readonly IDocumentStore documentStore;
-        private IObserver<Action<IDocumentSession>> inner;
+        private IObserver<RavenOperation> inner;
         private IGetEventStorePositionRepository positions;
 
         public CatchUpDocumentSessionObserver(IDocumentStore documentStore)
@@ -22,31 +20,18 @@ namespace Derp.Inventory.Web.ViewWriters
             inner = observer;
         }
 
-        #region Handles<CaughtUp> Members
-
-        public void Handle(CaughtUp message)
-        {
-            inner.OnCompleted();
-
-            var observer = new ImmediateDocumentSessionObserver<TView>(documentStore);
-            positions = observer;
-            inner = observer;
-        }
-
-        #endregion
-
         #region IGetEventStorePositionRepository Members
 
-        public Position? GetLastProcessedPosition()
+        public Position GetLastProcessedPosition()
         {
             return positions.GetLastProcessedPosition();
         }
 
         #endregion
 
-        #region IObserver<Action<IDocumentSession>> Members
+        #region IObserver<RavenOperation> Members
 
-        public void OnNext(Action<IDocumentSession> value)
+        public void OnNext(RavenOperation value)
         {
             inner.OnNext(value);
         }
@@ -62,5 +47,14 @@ namespace Derp.Inventory.Web.ViewWriters
         }
 
         #endregion
+
+        public void CaughtUp()
+        {
+            inner.OnCompleted();
+
+            var observer = new ImmediateDocumentSessionObserver<TView>(documentStore);
+            positions = observer;
+            inner = observer;
+        }
     }
 }

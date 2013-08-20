@@ -1,12 +1,11 @@
-﻿using Derp.Inventory.Web.Model;
-using EventStore.ClientAPI;
+﻿using EventStore.ClientAPI;
 using Raven.Client;
 
-namespace Derp.Inventory.Web.ViewWriters
+namespace Derp.Inventory.Web.Projections.Raven
 {
     public static class RavenExtensions
     {
-        public static Position? GetPositionFromRaven<T>(this IDocumentStore store)
+        public static Position GetPositionFromRaven<T>(this IDocumentStore store)
         {
             using (var session = store.OpenSession())
             {
@@ -14,7 +13,7 @@ namespace Derp.Inventory.Web.ViewWriters
             }
         }
 
-        public static Position? GetPositionFromRaven<T>(this IDocumentSession session)
+        public static Position GetPositionFromRaven<T>(this IDocumentSession session)
         {
             var conventions = session.Advanced.DocumentStore.Conventions;
             var tag = conventions.GetTypeTagName(typeof (T));

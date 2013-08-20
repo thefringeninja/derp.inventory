@@ -2,7 +2,7 @@
 using Nancy.ViewEngines;
 using Nancy.ViewEngines.Razor;
 
-namespace Derp.Inventory.Web
+namespace Derp.Inventory.Web.views
 {
     public abstract class RazorView<TModel>
         : NancyRazorViewBase<TModel> where TModel : class

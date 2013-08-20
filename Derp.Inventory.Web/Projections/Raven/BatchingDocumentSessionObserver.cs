@@ -1,15 +1,16 @@
 ﻿using System;
-using Derp.Inventory.Web.GetEventStore;
+using Derp.Inventory.Web.Infrastructure.GetEventStore;
 using EventStore.ClientAPI;
 using Raven.Client;
 
-namespace Derp.Inventory.Web.ViewWriters
+namespace Derp.Inventory.Web.Projections.Raven
 {
-    public class BatchingDocumentSessionObserver<TView> : IObserver<Action<IDocumentSession>>,
+    public class BatchingDocumentSessionObserver<TView> : IObserver<RavenOperation>,
                                                           IGetEventStorePositionRepository
     {
         private readonly IDocumentStore documentStore;
         private IDocumentSession session;
+        private Position lastProcessedPosition;
 
         public BatchingDocumentSessionObserver(IDocumentStore documentStore)
         {
@@ -19,18 +20,19 @@ namespace Derp.Inventory.Web.ViewWriters
 
         #region IGetEventStorePositionRepository Members
 
-        public Position? GetLastProcessedPosition()
+        public Position GetLastProcessedPosition()
         {
-            return session.GetPositionFromRaven<TView>();
+            return lastProcessedPosition;
         }
 
         #endregion
 
-        #region IObserver<Action<IDocumentSession>> Members
+        #region IObserver<RavenOperation> Members
 
-        public void OnNext(Action<IDocumentSession> value)
+        public void OnNext(RavenOperation operation)
         {
-            value(session);
+            operation.Execute(session);
+            lastProcessedPosition = operation.Position;
             FlushIfNecessary();
         }
 
@@ -62,6 +64,7 @@ namespace Derp.Inventory.Web.ViewWriters
 
         private void Flush()
         {
+            session.PersistPosition<TView>(lastProcessedPosition);
             session.SaveChanges();
             session.Dispose();
             session = OpenDocumentSession(documentStore);

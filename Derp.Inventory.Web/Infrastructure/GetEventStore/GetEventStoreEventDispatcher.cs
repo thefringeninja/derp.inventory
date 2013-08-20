@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using Derp.Inventory.Web.Messages;
-using Derp.Inventory.Web.Services;
+using Derp.Inventory.Infrastructure;
 using EventStore.ClientAPI;
 using Newtonsoft.Json;
 
-namespace Derp.Inventory.Web.GetEventStore
+namespace Derp.Inventory.Web.Infrastructure.GetEventStore
 {
     public class GetEventStoreEventDispatcher
     {
@@ -26,81 +25,93 @@ namespace Derp.Inventory.Web.GetEventStore
         //times until you get a pull message which position is >= subscription position 
         //(EventStore provides you with those positions).
 
-        private readonly EventStoreConnection connection;
+        private readonly Action caughtUp;
+        private readonly IEventStoreConnection connection;
 
         private readonly IGetEventStorePositionRepository positions;
-        private readonly EventPublisher publisher;
         private readonly JsonSerializerSettings serializerSettings;
 
-        private readonly IDictionary<Type, List<Action<object, Position?>>> subscriptions =
-            new Dictionary<Type, List<Action<object, Position?>>>();
+        private readonly IDictionary<Type, List<Action<object>>> subscriptions =
+            new Dictionary<Type, List<Action<object>>>();
 
-        private bool stopRequested;
         private EventStoreAllCatchUpSubscription subscription;
 
-        public GetEventStoreEventDispatcher(EventStoreConnection connection,
-                                            JsonSerializerSettings serializerSettings,
-                                            IGetEventStorePositionRepository positions,
-                                            EventPublisher publisher)
+        public GetEventStoreEventDispatcher(
+            IEventStoreConnection connection,
+            JsonSerializerSettings serializerSettings,
+            IGetEventStorePositionRepository positions,
+            Action caughtUp)
         {
-            if (connection == null) throw new ArgumentNullException("connection");
+            if (connection == null)
+                throw new ArgumentNullException("connection");
 
             this.connection = connection;
             this.serializerSettings = serializerSettings;
             this.positions = positions;
-            this.publisher = publisher;
+            this.caughtUp = caughtUp;
         }
 
 
         public void StartDispatching()
         {
-            stopRequested = false;
             RecoverSubscription();
         }
 
         public void StopDispatching()
         {
-            stopRequested = true;
             if (subscription != null)
                 subscription.Stop(TimeSpan.FromSeconds(2));
         }
 
+        private void EventAppeared(EventStoreCatchUpSubscription _, ResolvedEvent resolvedEvent)
+        {
+            List<Action<object>> subscribers;
+
+            if (!resolvedEvent.OriginalPosition.HasValue)
+                throw new ArgumentException(
+                    "ResolvedEvent didn't come off a subscription to all (has no position).");
+
+            if (resolvedEvent.OriginalEvent.EventType.StartsWith("$")
+                || resolvedEvent.OriginalStreamId.StartsWith("$"))
+                return;
+
+            var @event = ProcessRawEvent(resolvedEvent);
+
+            if (@event == null || !subscriptions.TryGetValue(@event.GetType(), out subscribers))
+                return;
+
+            var message = CreateEventStoreMessage(@event, resolvedEvent.OriginalPosition.Value);
+            subscribers.ForEach(handler => handler(message));
+        }
+
+        private static object CreateEventStoreMessage(Event @event, Position position)
+        {
+            return Activator.CreateInstance(
+                typeof (GetEventStoreMessage<>).MakeGenericType(@event.GetType()), @event, position);
+        }
+
         private void RecoverSubscription()
         {
-            var livePosition = connection.ReadAllEventsBackward(Position.End, 1, false).FromPosition;
-            var catchingUp = true;
             var lastProcessedPosition = positions.GetLastProcessedPosition();
             subscription = connection.SubscribeToAllFrom(
                 lastProcessedPosition, false,
-                (_, resolvedEvent) =>
-                {
-                    List<Action<object, Position?>> subscribers;
+                EventAppeared,
+                LiveProcessingStarted,
+                SubscriptionDropped);
+        }
 
-                    if (!resolvedEvent.OriginalPosition.HasValue)
-                        throw new ArgumentException(
-                            "ResolvedEvent didn't come off a subscription to all (has no position).");
+        private void SubscriptionDropped(
+            EventStoreCatchUpSubscription _, SubscriptionDropReason reason, Exception exception)
+        {
+            if (reason == SubscriptionDropReason.UserInitiated)
+                return;
 
-                    if (catchingUp && resolvedEvent.OriginalPosition.Value >= livePosition) {
-                    
-                        catchingUp = false;
-                        
-                        bus.Publish(new CaughtUp());
-                    }
-                    
-                    var @event = ProcessRawEvent(resolvedEvent);
+            RecoverSubscription();
+        }
 
-                    if (@event != null && subscriptions.TryGetValue(@event.GetType(), out subscribers))
-                    {
-                        subscribers.ForEach(handler => handler(@event, resolvedEvent.OriginalPosition));
-                    }
-                },
-                (_, reason, error) =>
-                {
-                    if (stopRequested)
-                        return;
-
-                    RecoverSubscription();
-                });
+        private void LiveProcessingStarted(EventStoreCatchUpSubscription _)
+        {
+            caughtUp();
         }
 
         private Event ProcessRawEvent(ResolvedEvent rawEvent)
@@ -111,15 +122,16 @@ namespace Derp.Inventory.Web.GetEventStore
             return @event;
         }
 
-        public void Subscribe<TEvent>(Action<TEvent, Position?> handler)
+        public void Subscribe<TEvent>(Action<GetEventStoreMessage<TEvent>> handler) where TEvent : Event
         {
-            List<Action<object, Position?>> subscribers;
+            List<Action<object>> subscribers;
             if (false == subscriptions.TryGetValue(typeof (TEvent), out subscribers))
             {
-                subscribers = subscriptions[typeof (TEvent)] = new List<Action<object, Position?>>();
+                subscribers = subscriptions[typeof (TEvent)] = new List<Action<object>>();
             }
 
-            subscribers.Add((message, position) => handler((TEvent) message, position));
+            subscribers.Add(
+                DelegateAdjuster.CastArgument<object, GetEventStoreMessage<TEvent>>(message => handler(message)));
         }
     }
 }

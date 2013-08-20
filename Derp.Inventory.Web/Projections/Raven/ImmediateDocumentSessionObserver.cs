@@ -1,11 +1,11 @@
 ﻿using System;
-using Derp.Inventory.Web.GetEventStore;
+using Derp.Inventory.Web.Infrastructure.GetEventStore;
 using EventStore.ClientAPI;
 using Raven.Client;
 
-namespace Derp.Inventory.Web.ViewWriters
+namespace Derp.Inventory.Web.Projections.Raven
 {
-    public class ImmediateDocumentSessionObserver<TView> : IObserver<Action<IDocumentSession>>,
+    public class ImmediateDocumentSessionObserver<TView> : IObserver<RavenOperation>,
                                                            IGetEventStorePositionRepository
     {
         private readonly IDocumentStore documentStore;
@@ -17,20 +17,21 @@ namespace Derp.Inventory.Web.ViewWriters
 
         #region IGetEventStorePositionRepository Members
 
-        public Position? GetLastProcessedPosition()
+        public Position GetLastProcessedPosition()
         {
             return documentStore.GetPositionFromRaven<TView>();
         }
 
         #endregion
 
-        #region IObserver<Action<IDocumentSession>> Members
+        #region IObserver<RavenOperation> Members
 
-        public void OnNext(Action<IDocumentSession> value)
+        public void OnNext(RavenOperation operation)
         {
             using (var session = documentStore.OpenSession())
             {
-                value(session);
+                operation.Execute(session);
+                session.PersistPosition<TView>(operation.Position);
                 session.SaveChanges();
             }
         }

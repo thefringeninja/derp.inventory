@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Derp.Inventory.Web.ViewModels;
 
-namespace Derp.Inventory.Web.Services
+namespace Derp.Inventory.Web.Projections.InMemory
 {
     public class InMemoryItemSearchRepository : Dictionary<Guid, ItemSearchResultViewModel>, IItemSearchRepository
     {

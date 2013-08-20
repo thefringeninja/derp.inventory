@@ -1,12 +1,12 @@
 ﻿using System;
 using Derp.Inventory.Messages;
+using Derp.Inventory.Web.Infrastructure.GetEventStore;
 using Derp.Inventory.Web.ViewModels;
-using Derp.Inventory.Web.ViewWriters;
 using EventStore.ClientAPI;
 
 namespace Derp.Inventory.Web.Projections
 {
-    public class ItemSearchResultProjection : ProjectionHandles<ItemTracked>
+    public class ItemSearchResultProjection : Handles<GetEventStoreMessage<ItemTracked>>
     {
         private readonly IWriteViews<Guid, ItemSearchResultViewModel> writer;
 
@@ -17,15 +17,15 @@ namespace Derp.Inventory.Web.Projections
 
         #region ProjectionHandles<ItemTracked> Members
 
-        public void Handle(ItemTracked message, Position? position)
+        public void Handle(GetEventStoreMessage<ItemTracked> message)
         {
             writer.AddOrUpdate(
-                message.WarehouseItemId,
-                position,
-                () => new ItemSearchResultViewModel(message.WarehouseItemId, message.WarehouseId)
+                message.Message.WarehouseItemId,
+                message.Position,
+                () => new ItemSearchResultViewModel(message.Message.WarehouseItemId, message.Message.WarehouseId)
                 {
-                    Description = message.Description,
-                    Sku = message.Sku
+                    Description = message.Message.Description,
+                    Sku = message.Message.Sku
                 });
         }
 
